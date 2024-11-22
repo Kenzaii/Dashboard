@@ -162,7 +162,14 @@ class DashboardMetrics {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        position: window.innerWidth < 768 ? 'bottom' : 'right',
+                        labels: {
+                            boxWidth: window.innerWidth < 768 ? 12 : 20,
+                            padding: window.innerWidth < 768 ? 10 : 20,
+                            font: {
+                                size: window.innerWidth < 768 ? 11 : 12
+                            }
+                        }
                     },
                     tooltip: {
                         mode: 'index',
@@ -191,7 +198,10 @@ class DashboardMetrics {
                             drawBorder: false
                         },
                         ticks: {
-                            color: '#999999'
+                            color: '#999999',
+                            font: {
+                                size: window.innerWidth < 768 ? 10 : 12
+                            }
                         }
                     },
                     y: {
@@ -202,7 +212,10 @@ class DashboardMetrics {
                         },
                         ticks: {
                             color: '#999999',
-                            precision: 0
+                            precision: 0,
+                            font: {
+                                size: window.innerWidth < 768 ? 10 : 12
+                            }
                         }
                     }
                 }
@@ -316,35 +329,12 @@ class DashboardMetrics {
                 },
                 plugins: {
                     legend: {
-                        position: 'right',
+                        position: window.innerWidth < 768 ? 'bottom' : 'right',
                         labels: {
-                            color: '#ffffff', // Set legend text color
+                            boxWidth: window.innerWidth < 768 ? 12 : 20,
+                            padding: window.innerWidth < 768 ? 10 : 20,
                             font: {
-                                size: 12,
-                                family: "'Poppins', sans-serif",
-                                weight: '500'
-                            },
-                            padding: 15,
-                            usePointStyle: true, // Use point style for better visibility
-                            generateLabels: function(chart) {
-                                const datasets = chart.data.datasets;
-                                const labels = chart.data.labels;
-                                const total = datasets[0].data.reduce((a, b) => a + b, 0);
-                                
-                                return labels.map((label, i) => {
-                                    const value = datasets[0].data[i];
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    
-                                    return {
-                                        text: `${label} - $${value.toFixed(2)} (${percentage}%)`,
-                                        fillStyle: datasets[0].backgroundColor[i],
-                                        strokeStyle: datasets[0].borderColor[i],
-                                        lineWidth: 2,
-                                        hidden: false,
-                                        index: i,
-                                        fontColor: '#ffffff' // Ensure text is white
-                                    };
-                                });
+                                size: window.innerWidth < 768 ? 11 : 12
                             }
                         }
                     },
@@ -412,4 +402,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             dashboardMetrics.updateMonthlyRevenueChart()
         ]);
     }, 30000);
+});
+
+// Add window resize handler
+window.addEventListener('resize', () => {
+    if (window.monthlyRevenueChart) {
+        window.monthlyRevenueChart.options.plugins.legend.position = 
+            window.innerWidth < 768 ? 'bottom' : 'right';
+        window.monthlyRevenueChart.update();
+    }
+    if (window.userGrowthChart) {
+        window.userGrowthChart.options.plugins.legend.position = 
+            window.innerWidth < 768 ? 'bottom' : 'right';
+        window.userGrowthChart.update();
+    }
 }); 
