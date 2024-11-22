@@ -6,61 +6,17 @@
 }
 
 .dashboard {
-    display: flex;
     min-height: 100vh;
     background: #1a1a1a;
 }
 
-/* Sidebar Styles */
-.sidebar {
-    width: 250px;
-    background: #111111;
-    color: #ffffff;
-    padding: 20px;
-}
-
-.logo h2 {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #333333;
-    color: #00ff88;
-}
-
-.nav-links {
-    list-style: none;
-}
-
-.nav-links li {
-    margin-bottom: 15px;
-}
-
-.nav-links a {
-    color: #cccccc;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    border-radius: 5px;
-    transition: all 0.3s;
-}
-
-.nav-links a:hover {
-    background: #333333;
-    color: #00ff88;
-}
-
-.nav-links i {
-    margin-right: 10px;
-    color: #00ff88;
-}
-
 /* Main Content Styles */
 .main-content {
-    flex: 1;
-    background: #1a1a1a;
-    padding: 20px;
+    padding: 30px;
+    width: 100%;
 }
 
+/* Header Styles */
 header {
     display: flex;
     justify-content: space-between;
@@ -68,25 +24,18 @@ header {
     margin-bottom: 30px;
 }
 
-.search-bar input {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    width: 300px;
-    background: #2d2d2d;
-    color: #ffffff;
-    border: 1px solid #333333;
+.dashboard-title {
+    color: #00ff88;
+    font-size: 1.5rem;
+    font-weight: 500;
 }
 
-.search-bar input::placeholder {
-    color: #666666;
-}
-
+/* User Profile Styles */
 .user-profile {
     display: flex;
     align-items: center;
     gap: 15px;
-    padding: 5px;
+    padding: 5px 15px;
     background: #2d2d2d;
     border-radius: 25px;
     border: 1px solid #333333;
@@ -249,83 +198,12 @@ header {
     border: 1px solid #333333;
 }
 
-/* Call Section Styles */
-.call-section {
-    margin-top: 30px;
-    margin-bottom: 30px;
-    display: grid;
-    gap: 30px;
-    grid-template-columns: 1fr 2fr;
-}
-
-/* Call Breakdown Styles */
-.call-breakdown {
-    background: #2d2d2d;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    border: 1px solid #333333;
-}
-
-.breakdown-stats {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 20px;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-circle {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-    position: relative;
-    border: 2px solid;
-    color: #ffffff;
-}
-
-.stat-circle.incoming {
-    border-color: #00ff88;
-}
-
-.stat-circle.outgoing {
-    border-color: #00a1ff;
-}
-
-.stat-circle.missed {
-    border-color: #ff4444;
-}
-
-.stat-circle i {
-    font-size: 24px;
-    margin-bottom: 8px;
-    color: #ffffff;
-}
-
-.stat-circle .stat-number {
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.stat-item p {
-    color: #ffffff;
-    font-size: 14px;
-    margin-top: 10px;
-}
-
 /* Call Logs Styles */
 .call-logs {
-    background: #2d2d2d;
+    margin-top: 30px;
     padding: 20px;
+    background: #2d2d2d;
     border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     border: 1px solid #333333;
 }
 
@@ -334,16 +212,6 @@ header {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-}
-
-.log-filter {
-    background: #1a1a1a;
-    border: 1px solid #333333;
-    color: #ffffff;
-    padding: 8px 15px;
-    border-radius: 5px;
-    outline: none;
-    margin-left: 15px;
 }
 
 .logs-table {
@@ -402,10 +270,6 @@ td {
 /* Hover effects */
 tr:hover {
     background: #333333;
-}
-
-.log-filter:hover {
-    border-color: #00ff88;
 }
 
 /* Responsive adjustments */
@@ -502,17 +366,6 @@ tr {
     height: 60px;
 }
 
-/* Update filter dropdown styling */
-.log-filter {
-    background: #1a1a1a;
-    border: 1px solid #333333;
-    color: #ffffff;
-    padding: 8px 15px;
-    border-radius: 5px;
-    outline: none;
-    margin-left: 15px;
-}
-
 /* Call Logs Table Styles */
 .logs-table {
     margin-top: 20px;
@@ -557,21 +410,17 @@ tbody tr:hover {
     font-size: 12px;
     font-weight: 500;
     display: inline-block;
+    text-transform: capitalize;
 }
 
-.status.completed {
+.status.incoming {
     background: rgba(0, 255, 136, 0.1);
     color: #00ff88;
 }
 
-.status.missed {
-    background: rgba(255, 68, 68, 0.1);
-    color: #ff4444;
-}
-
-.status.ongoing {
-    background: rgba(0, 161, 255, 0.1);
-    color: #00a1ff;
+.status.outgoing {
+    background: rgba(0, 217, 255, 0.1);
+    color: #00d9ff;
 }
 
 /* Table Loading State */

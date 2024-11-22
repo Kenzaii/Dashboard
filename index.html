@@ -3,40 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Dashboard</title>
+    <title>Dashboard</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="airtable-service.js"></script>
     <script src="services/airtable-service.js"></script>
     <script src="auth.js"></script>
     <script src="dashboard.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="dashboard">
-        <!-- Sidebar -->
-        <nav class="sidebar">
-            <div class="logo">
-                <h2>Dashboard</h2>
-            </div>
-            <ul class="nav-links">
-                <li><a href="#"><i class="fas fa-home"></i> Home</a></li>
-                <li><a href="#"><i class="fas fa-chart-bar"></i> Analytics</a></li>
-                <li><a href="#"><i class="fas fa-users"></i> Users</a></li>
-                <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
-            </ul>
-        </nav>
-
         <!-- Main Content -->
         <main class="main-content">
             <header>
-                <div class="search-bar">
-                    <input type="text" placeholder="Search...">
-                </div>
+                <h2 class="dashboard-title">Dashboard</h2>
                 <div class="user-profile">
                     <img src="https://via.placeholder.com/40" alt="Profile">
-                    <span id="username">John Doe</span>
+                    <span id="username"></span>
                     <button class="logout-btn" onclick="logout()">
                         <i class="fas fa-sign-out-alt"></i>
                         Logout
@@ -79,62 +63,26 @@
                 </div>
             </div>
 
-            <!-- Call Breakdown Section -->
-            <div class="call-section">
-                <div class="call-breakdown">
-                    <h3>Call Breakdown</h3>
-                    <div class="breakdown-stats">
-                        <div class="stat-item">
-                            <div class="stat-circle incoming">
-                                <i class="fas fa-phone-volume"></i>
-                                <span class="stat-number" id="incoming-percentage">0%</span>
-                            </div>
-                            <p>Incoming Calls</p>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-circle outgoing">
-                                <i class="fas fa-phone"></i>
-                                <span class="stat-number" id="outgoing-percentage">0%</span>
-                            </div>
-                            <p>Outgoing Calls</p>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-circle missed">
-                                <i class="fas fa-phone-slash"></i>
-                                <span class="stat-number" id="missed-percentage">0%</span>
-                            </div>
-                            <p>Missed Calls</p>
-                        </div>
-                    </div>
+            <!-- Call Logs Table -->
+            <div class="call-logs">
+                <div class="logs-header">
+                    <h3>Recent Call Logs</h3>
                 </div>
-
-                <!-- Call Logs Table -->
-                <div class="call-logs">
-                    <div class="logs-header">
-                        <h3>Recent Call Logs</h3>
-                        <select class="log-filter">
-                            <option value="all">All Calls</option>
-                            <option value="incoming">Incoming</option>
-                            <option value="outgoing">Outgoing</option>
-                            <option value="missed">Missed</option>
-                        </select>
-                    </div>
-                    <div class="logs-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Call ID</th>
-                                    <th>Phone Number</th>
-                                    <th>Duration</th>
-                                    <th>Status</th>
-                                    <th>Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody id="calls-table-body">
-                                <!-- Rows will be populated dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="logs-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Call ID</th>
+                                <th>Phone Number</th>
+                                <th>Duration (Seconds)</th>
+                                <th>Status</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calls-table-body">
+                            <!-- Rows will be populated dynamically -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </main>

@@ -67,23 +67,23 @@ class DashboardMetrics {
             recentCalls.forEach(call => {
                 const row = document.createElement('tr');
                 
-                // Format the duration
-                const duration = call.fields['Call duration'] || '0:00';
-                
-                // Format the status with appropriate styling
-                const status = call.fields['Call status'] || 'Unknown';
-                const statusClass = status.toLowerCase();
+                // Get values using exact field names
+                const callId = call.fields['Call Id'] || '-';
+                const phoneNumber = call.fields['Phone number'] || '-';
+                const duration = call.fields['Call duration'] || '0';
+                const status = call.fields['Call status']?.toLowerCase() || 'unknown';
+                const cost = call.fields['Total cost'] || 0;
                 
                 row.innerHTML = `
-                    <td>${call.fields['Call Id'] || '-'}</td>
-                    <td>${call.fields['Phone number'] || '-'}</td>
+                    <td>${callId}</td>
+                    <td>${phoneNumber}</td>
                     <td>${duration}</td>
                     <td>
-                        <span class="status ${statusClass}">
-                            ${status}
+                        <span class="status ${status}">
+                            ${status.charAt(0).toUpperCase() + status.slice(1)}
                         </span>
                     </td>
-                    <td>$${(call.fields['Total cost'] || 0).toFixed(2)}</td>
+                    <td>$${Number(cost).toFixed(2)}</td>
                 `;
                 
                 tableBody.appendChild(row);
