@@ -85,11 +85,47 @@ header {
 .user-profile {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
+    padding: 5px;
+    background: #2d2d2d;
+    border-radius: 25px;
+    border: 1px solid #333333;
 }
 
 .user-profile img {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
+    border: 2px solid #00ff88;
+}
+
+.user-profile span {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    background: #1a1a1a;
+    border: 1px solid #333333;
+    border-radius: 20px;
+    color: #ff4444;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout-btn i {
+    font-size: 14px;
+}
+
+.logout-btn:hover {
+    background: #ff4444;
+    color: #ffffff;
+    border-color: #ff4444;
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
 }
 
 /* Dashboard Cards */
