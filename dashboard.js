@@ -1,6 +1,8 @@
 // Add this check at the start of your file
 if (typeof Chart === 'undefined') {
-    console.error('Chart.js is not loaded!');
+    console.error('Chart.js is not loaded! Please check if the Chart.js script is properly included.');
+} else {
+    console.log('Chart.js version:', Chart.version);
 }
 
 class DashboardMetrics {
@@ -8,76 +10,196 @@ class DashboardMetrics {
         this.airtableService = airtableService;
         this.monthlyRevenueChart = null;
         this.userGrowthChart = null;
-        this.retryDelay = 5000; // 5 seconds between retries
-        this.maxRetries = 3;
+        this.callPatternChart = null;
+        this.currentTimeView = 'day';
+        this.currentPage = 1;
+        this.itemsPerPage = 10;
+        this.totalCalls = 0;
+        this.paginationCreated = false;
+        this.lastUpdate = null;
+        this.updateInterval = 30000; // 30 seconds
+        this.cachedCalls = null;
     }
 
-    async fetchWithRetry(fetchFunction, retries = 0) {
-        try {
-            return await fetchFunction();
-        } catch (error) {
-            if (retries < this.maxRetries) {
-                console.log(`Retry attempt ${retries + 1} of ${this.maxRetries}`);
-                await new Promise(resolve => setTimeout(resolve, this.retryDelay));
-                return this.fetchWithRetry(fetchFunction, retries + 1);
-            }
-            throw error;
+    // Helper function to safely update element text content
+    safeSetText(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = value;
         }
     }
 
+    // Helper function to format currency
+    formatCurrency(amount) {
+        return `$${Number(amount || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })}`;
+    }
+
+    async updateMetrics() {
+        try {
+            const calls = await this.airtableService.fetchCalls();
+            
+            // Calculate metrics without percentage changes
+            const totalCalls = calls.length;
+            const totalCost = calls.length > 0 ? 
+                calls[0].fields['Cumulative Total Cost'] || 0 : 0;
+            const avgCostPerMinute = calls.length > 0 ? 
+                calls[0].fields['Avg cost per minute'] || 0 : 0;
+
+            // Update only the main metrics
+            this.safeSetText('total-calls', totalCalls.toLocaleString());
+            this.safeSetText('cumulative-cost', this.formatCurrency(totalCost));
+            this.safeSetText('avg-cost', this.formatCurrency(avgCostPerMinute));
+            
+        } catch (error) {
+            console.error('Error updating metrics:', error);
+            const defaultValues = {
+                'total-calls': '0',
+                'cumulative-cost': '$0.00',
+                'avg-cost': '$0.00'
+            };
+            
+            Object.entries(defaultValues).forEach(([id, value]) => {
+                this.safeSetText(id, value);
+            });
+        }
+    }
+
+    // Create pagination controls only once
+    createPaginationControls() {
+        if (this.paginationCreated) return;
+
+        const tableWrapper = document.querySelector('.table-wrapper');
+        if (!tableWrapper) return;
+
+        const paginationHtml = `
+            <div class="pagination" id="pagination-controls">
+                <button id="prevPage" class="pagination-btn">&lt; Previous</button>
+                <span id="pageInfo" class="page-info">Page ${this.currentPage}</span>
+                <button id="nextPage" class="pagination-btn">Next &gt;</button>
+            </div>
+        `;
+
+        // Remove existing pagination if any
+        const existingPagination = document.getElementById('pagination-controls');
+        if (existingPagination) {
+            existingPagination.remove();
+        }
+
+        tableWrapper.insertAdjacentHTML('afterend', paginationHtml);
+
+        // Add event listeners
+        document.getElementById('prevPage').addEventListener('click', () => this.changePage('prev'));
+        document.getElementById('nextPage').addEventListener('click', () => this.changePage('next'));
+
+        this.paginationCreated = true;
+    }
+
+    // Update call logs with pagination
     async updateCallLogs() {
         try {
-            const calls = await this.fetchWithRetry(() => this.airtableService.fetchCalls());
-            if (!calls || calls.length === 0) {
-                console.log('No calls data available');
+            const calls = await this.airtableService.fetchCalls();
+            this.totalCalls = calls.length;
+            const tableBody = document.querySelector('#recent-calls-table tbody');
+            
+            if (!tableBody) {
+                console.error('Recent calls table not found in the DOM');
                 return;
             }
-            
-            // Get the table body element
-            const tableBody = document.getElementById('calls-table-body');
-            tableBody.innerHTML = ''; // Clear existing rows
-            
-            // Take the 10 most recent calls
-            const recentCalls = calls.slice(0, 10);
-            
-            recentCalls.forEach(call => {
+
+            tableBody.innerHTML = '';
+
+            // Calculate pagination
+            const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+            const endIndex = startIndex + this.itemsPerPage;
+            const paginatedCalls = calls.slice(startIndex, endIndex);
+
+            paginatedCalls.forEach(call => {
                 const row = document.createElement('tr');
                 
-                // Get values using exact field names
-                const callId = call.fields['Call Id'] || '-';
-                const phoneNumber = call.fields['Phone number'] || '-';
-                const duration = call.fields['Call duration'] || '0';
-                const status = call.fields['Call status']?.toLowerCase() || 'unknown';
-                const cost = call.fields['Total cost'] || 0;
+                // Parse dates
+                const startTime = new Date(call.fields['Start time']);
+                const endTime = new Date(call.fields['End time']);
                 
+                // Calculate duration
+                const duration = call.fields['Call duration'] || 0;
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                // Format cost
+                const totalCost = new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD'
+                }).format(call.fields['Total cost'] || 0);
+
                 row.innerHTML = `
-                    <td>${callId}</td>
-                    <td>${phoneNumber}</td>
-                    <td>${duration}</td>
-                    <td>
-                        <span class="status ${status}">
-                            ${status.charAt(0).toUpperCase() + status.slice(1)}
-                        </span>
-                    </td>
-                    <td>$${Number(cost).toFixed(2)}</td>
+                    <td>${call.fields['Phone number'] || '-'}</td>
+                    <td>${formattedDuration}</td>
+                    <td>${call.fields['Call status'] || '-'}</td>
+                    <td>${call.fields['Ended reason'] || '-'}</td>
+                    <td>${totalCost}</td>
+                    <td>${startTime.toLocaleString()}</td>
+                    <td>${endTime.toLocaleString()}</td>
                 `;
                 
                 tableBody.appendChild(row);
             });
-            
+
+            // Update pagination info and buttons
+            this.updatePaginationInfo();
+            this.updatePaginationButtons();
+
         } catch (error) {
             console.error('Error updating call logs:', error);
-            // Show user-friendly error message
-            const tableBody = document.getElementById('calls-table-body');
+            const tableBody = document.querySelector('#recent-calls-table tbody');
             if (tableBody) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #ff4444;">
-                            Unable to load call data. Please try again later.
+                        <td colspan="7" style="text-align: center; color: #ff4444;">
+                            Error loading call logs. Please try again later.
                         </td>
                     </tr>
                 `;
             }
+        }
+    }
+
+    // Change page
+    async changePage(direction) {
+        const totalPages = Math.ceil(this.totalCalls / this.itemsPerPage);
+        
+        if (direction === 'prev' && this.currentPage > 1) {
+            this.currentPage--;
+        } else if (direction === 'next' && this.currentPage < totalPages) {
+            this.currentPage++;
+        }
+
+        await this.updateCallLogs();
+    }
+
+    // Update pagination info
+    updatePaginationInfo() {
+        const totalPages = Math.ceil(this.totalCalls / this.itemsPerPage);
+        const pageInfo = document.getElementById('pageInfo');
+        if (pageInfo) {
+            pageInfo.textContent = `Page ${this.currentPage} of ${totalPages}`;
+        }
+    }
+
+    // Update pagination buttons state
+    updatePaginationButtons() {
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        const totalPages = Math.ceil(this.totalCalls / this.itemsPerPage);
+
+        if (prevBtn) {
+            prevBtn.disabled = this.currentPage === 1;
+        }
+        if (nextBtn) {
+            nextBtn.disabled = this.currentPage === totalPages;
         }
     }
 
@@ -374,106 +496,317 @@ class DashboardMetrics {
         return 0;
     }
 
-    // Helper function to format currency
-    formatCurrency(amount) {
-        return `$${Number(amount || 0).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        })}`;
-    }
-
-    // Helper function to safely update element text content
-    safeSetText(elementId, value) {
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.textContent = value;
-        } else {
-            console.warn(`Element with id '${elementId}' not found`);
+    // Add new method to cache calls data
+    async getCalls() {
+        const now = new Date().getTime();
+        
+        // If we have cached data and it's less than 30 seconds old, use it
+        if (this.cachedCalls && this.lastUpdate && 
+            (now - this.lastUpdate) < this.updateInterval) {
+            return this.cachedCalls;
         }
-    }
 
-    async updateMetrics() {
+        // Otherwise fetch new data
         try {
             const calls = await this.airtableService.fetchCalls();
-            
-            // Calculate total calls
-            const totalCalls = calls.length;
-            
-            // Get latest Cumulative Total Cost (from the first record)
-            const totalCost = calls.length > 0 ? 
-                calls[0].fields['Cumulative Total Cost'] || 0 : 0;
-            
-            // Get Average Cost Per Minute
-            const avgCostPerMinute = calls.length > 0 ? 
-                calls[0].fields['Avg cost per minute'] || 0 : 0;
-
-            // Update the DOM with formatted values using safe method
-            this.safeSetText('total-calls', totalCalls.toLocaleString());
-            this.safeSetText('cumulative-cost', this.formatCurrency(totalCost));
-            this.safeSetText('avg-cost', this.formatCurrency(avgCostPerMinute));
-            
-            // Calculate percentage changes
-            const previousTotalCalls = totalCalls * 0.9;
-            const callsChange = ((totalCalls - previousTotalCalls) / previousTotalCalls) * 100;
-            
-            const previousTotalCost = totalCost * 0.9;
-            const costChange = ((totalCost - previousTotalCost) / previousTotalCost) * 100;
-            
-            const previousAvgCost = avgCostPerMinute * 0.9;
-            const avgCostChange = ((avgCostPerMinute - previousAvgCost) / previousAvgCost) * 100;
-            
-            // Format percentage changes
-            const formatPercentage = (value) => {
-                const sign = value >= 0 ? '+' : '';
-                return `${sign}${value.toFixed(1)}%`;
-            };
-            
-            // Update change percentages using safe method
-            this.safeSetText('calls-change', formatPercentage(callsChange));
-            this.safeSetText('cost-change', formatPercentage(costChange));
-            this.safeSetText('avg-cost-change', formatPercentage(avgCostChange));
-            
-            // Update classes for styling
-            const updateChangeClass = (elementId, value) => {
-                const element = document.getElementById(elementId);
-                if (element) {
-                    element.className = `change ${value >= 0 ? 'positive' : 'negative'}`;
-                }
-            };
-            
-            updateChangeClass('calls-change', callsChange);
-            updateChangeClass('cost-change', costChange);
-            updateChangeClass('avg-cost-change', avgCostChange);
-            
+            this.cachedCalls = calls;
+            this.lastUpdate = now;
+            return calls;
         } catch (error) {
-            console.error('Error updating metrics:', error);
-            // Set default values if there's an error
-            const defaultValues = {
-                'total-calls': '0',
-                'cumulative-cost': '$0.00',
-                'avg-cost': '$0.00',
-                'calls-change': '0%',
-                'cost-change': '0%',
-                'avg-cost-change': '0%'
-            };
-            
-            Object.entries(defaultValues).forEach(([id, value]) => {
-                this.safeSetText(id, value);
-            });
+            console.error('Error fetching calls:', error);
+            return this.cachedCalls || []; // Return cached data if available, else empty array
         }
     }
 
-    // Update initialization
+    // Update the changeTimeView method
+    async changeTimeView(view) {
+        if (this.currentTimeView === view) return; // Don't update if view hasn't changed
+        
+        this.currentTimeView = view;
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+        
+        await this.renderCallPatternChart();
+    }
+
+    // Update the renderCallPatternChart method
+    async renderCallPatternChart() {
+        try {
+            const ctx = document.getElementById('callPatternChart')?.getContext('2d');
+            if (!ctx) {
+                console.error('Canvas context not found');
+                return;
+            }
+
+            // Use cached calls data
+            const calls = await this.getCalls();
+            
+            if (this.callPatternChart) {
+                this.callPatternChart.destroy();
+            }
+
+            const patterns = this.processCallPatterns(calls);
+            const labels = this.getTimeLabels();
+            const currentHour = new Date().getHours();
+
+            const getTitleText = () => {
+                const now = new Date();
+                switch(this.currentTimeView) {
+                    case 'day':
+                        return `Today's Call Pattern (${now.toLocaleDateString()})`;
+                    case 'week':
+                        const weekStart = this.getStartOfWeek(now);
+                        const weekEnd = new Date(weekStart);
+                        weekEnd.setDate(weekEnd.getDate() + 6);
+                        return `Current Week's Call Pattern (${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()})`;
+                    case 'month':
+                        return `Current Month's Call Pattern (${now.toLocaleString('default', { month: 'long', year: 'numeric' })})`;
+                    default:
+                        return 'Call Pattern Analysis';
+                }
+            };
+
+            this.callPatternChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Call Volume',
+                        data: patterns[this.currentTimeView],
+                        borderColor: 'rgb(0, 255, 136)',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgb(0, 255, 136)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(0, 255, 136)',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        cubicInterpolationMode: 'monotone'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: getTitleText(),
+                            color: '#ffffff',
+                            padding: {
+                                top: 10,
+                                bottom: 30
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#ffffff',
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        annotation: {
+                            annotations: this.currentTimeView === 'day' ? {
+                                line1: {
+                                    type: 'line',
+                                    xMin: currentHour,
+                                    xMax: currentHour,
+                                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        content: 'Current Time',
+                                        enabled: true,
+                                        position: 'top'
+                                    }
+                                }
+                            } : {}
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#999999',
+                                padding: 10
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#999999',
+                                maxRotation: 45,
+                                minRotation: 45,
+                                padding: 10
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.4
+                        },
+                        point: {
+                            radius: 4,
+                            hoverRadius: 6,
+                            backgroundColor: 'rgb(0, 255, 136)',
+                            borderColor: '#ffffff'
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    hover: {
+                        mode: 'nearest',
+                        intersect: true
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error rendering call pattern chart:', error);
+        }
+    }
+
+    // Update initialize method
     async initialize() {
         try {
+            this.createPaginationControls();
+            
+            // Initial data fetch
+            await this.getCalls();
+
             await Promise.all([
                 this.updateMetrics(),
-                this.updateCallLogs(),
                 this.updateMonthlyRevenueChart(),
-                this.updateUserGrowthChart()
+                this.updateUserGrowthChart(),
+                this.updateCallLogs(),
+                this.renderCallPatternChart()
             ]);
+
+            // Add event listeners for view buttons
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const newView = e.target.dataset.view;
+                    this.changeTimeView(newView);
+                });
+            });
+
+            // Set up periodic updates
+            setInterval(async () => {
+                const calls = await this.getCalls(); // This will only fetch if cache is expired
+                if (calls !== this.cachedCalls) {
+                    await this.renderCallPatternChart();
+                }
+            }, this.updateInterval);
+
         } catch (error) {
             console.error('Error initializing dashboard:', error);
+        }
+    }
+
+    // Add these helper methods to your class
+    getStartOfWeek(date) {
+        const curr = new Date(date);
+        curr.setHours(0, 0, 0, 0);
+        const first = curr.getDate() - curr.getDay();
+        return new Date(curr.setDate(first));
+    }
+
+    getStartOfMonth(date) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
+    // Update the processCallPatterns method
+    processCallPatterns(calls) {
+        const patterns = {
+            day: new Array(24).fill(0),
+            week: new Array(7).fill(0),
+            month: new Array(31).fill(0)
+        };
+
+        // Get current date references
+        const now = new Date();
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        
+        const currentWeekStart = this.getStartOfWeek(now);
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekEnd.getDate() + 7);
+        
+        const currentMonthStart = this.getStartOfMonth(now);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        calls.forEach(call => {
+            const startTimeStr = call.fields['Start time'];
+            if (!startTimeStr) return;
+
+            const startTime = new Date(startTimeStr);
+            if (isNaN(startTime.getTime())) {
+                console.warn('Invalid date:', startTimeStr);
+                return;
+            }
+
+            // Process based on current view
+            switch(this.currentTimeView) {
+                case 'day':
+                    // Only count calls from today
+                    if (startTime.toDateString() === today.toDateString()) {
+                        patterns.day[startTime.getHours()]++;
+                    }
+                    break;
+
+                case 'week':
+                    // Only count calls from current week
+                    if (startTime >= currentWeekStart && startTime < currentWeekEnd) {
+                        patterns.week[startTime.getDay()]++;
+                    }
+                    break;
+
+                case 'month':
+                    // Only count calls from current month
+                    if (startTime >= currentMonthStart && startTime <= currentMonthEnd) {
+                        patterns.month[startTime.getDate() - 1]++;
+                    }
+                    break;
+            }
+        });
+
+        return patterns;
+    }
+
+    // Update the getTimeLabels method
+    getTimeLabels() {
+        const now = new Date();
+        
+        switch(this.currentTimeView) {
+            case 'day':
+                return Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+            
+            case 'week':
+                const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const currentWeekStart = this.getStartOfWeek(now);
+                return weekDays.map((day, index) => {
+                    const date = new Date(currentWeekStart);
+                    date.setDate(date.getDate() + index);
+                    return `${day} (${date.getDate()}/${date.getMonth() + 1})`;
+                });
+            
+            case 'month':
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                return Array.from({length: daysInMonth}, (_, i) => `Day ${i + 1}`);
         }
     }
 }
@@ -486,13 +819,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial load
     await dashboardMetrics.initialize();
     
-    // Update every 30 seconds with error handling
-    const updateInterval = 30000;
+    // Update every 30 seconds
     setInterval(async () => {
-        try {
-            await dashboardMetrics.initialize();
-        } catch (error) {
-            console.error('Error updating dashboard:', error);
-        }
-    }, updateInterval);
+        await dashboardMetrics.initialize();
+    }, 30000);
 }); 
