@@ -125,23 +125,23 @@ class DashboardMetrics {
     renderMonthlyRevenueChart(data) {
         const ctx = document.getElementById('monthlyRevenueChart').getContext('2d');
         
-        // Destroy existing chart if it exists
         if (this.monthlyRevenueChart) {
             this.monthlyRevenueChart.destroy();
         }
 
-        // Set default Chart.js colors and fonts
-        Chart.defaults.color = '#ffffff';
-        Chart.defaults.font.family = "'Poppins', sans-serif";
-
         const isMobile = window.innerWidth < 768;
+
+        const formattedData = {
+            ...data,
+            values: data.values.map(value => Number(value || 0))
+        };
 
         this.monthlyRevenueChart = new Chart(ctx, {
             type: 'pie',
             data: {
-                labels: data.labels,
+                labels: formattedData.labels,
                 datasets: [{
-                    data: data.values,
+                    data: formattedData.values,
                     backgroundColor: [
                         'rgba(0, 255, 136, 0.7)',
                         'rgba(0, 217, 255, 0.7)',
@@ -169,18 +169,61 @@ class DashboardMetrics {
                         left: isMobile ? 10 : 20,
                         right: isMobile ? 10 : 20,
                         top: isMobile ? 10 : 20,
-                        bottom: isMobile ? 10 : 20
+                        bottom: 0
                     }
                 },
                 plugins: {
-                    legend: {
-                        position: isMobile ? 'bottom' : 'right',
-                        labels: {
-                            padding: isMobile ? 10 : 20,
-                            font: {
-                                size: isMobile ? 10 : 12
+                    tooltip: {
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                return `$${value.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}`;
                             }
                         }
+                    },
+                    legend: {
+                        position: 'bottom',
+                        align: 'center',
+                        labels: {
+                            color: '#ffffff',
+                            padding: isMobile ? 10 : 15,
+                            font: {
+                                family: "'Poppins', sans-serif",
+                                size: isMobile ? 12 : 14,
+                                weight: '500'
+                            },
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const formattedValue = `$${value.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}`;
+                                        const text = `${label}: ${formattedValue}`;
+                                        return {
+                                            text: text,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            strokeStyle: data.datasets[0].borderColor[i],
+                                            lineWidth: 2,
+                                            hidden: false,
+                                            index: i,
+                                            fontColor: '#ffffff'
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    title: {
+                        display: false
                     }
                 }
             }
@@ -225,19 +268,20 @@ class DashboardMetrics {
     renderUserGrowthChart(data) {
         const ctx = document.getElementById('userGrowthChart').getContext('2d');
         
-        // Destroy existing chart if it exists
         if (this.userGrowthChart) {
             this.userGrowthChart.destroy();
         }
 
         const isMobile = window.innerWidth < 768;
 
+        Chart.defaults.font.family = "'Poppins', sans-serif";
+
         this.userGrowthChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: data.labels,
                 datasets: [{
-                    label: 'User Growth',
+                    label: 'Number of Calls Weekly',
                     data: data.values,
                     borderColor: 'rgb(0, 255, 136)',
                     backgroundColor: 'rgba(0, 255, 136, 0.1)',
@@ -254,18 +298,28 @@ class DashboardMetrics {
                         left: isMobile ? 10 : 20,
                         right: isMobile ? 10 : 20,
                         top: isMobile ? 10 : 20,
-                        bottom: isMobile ? 10 : 20
+                        bottom: 0
                     }
                 },
                 plugins: {
                     legend: {
-                        position: isMobile ? 'bottom' : 'top',
+                        position: 'bottom',
+                        align: 'center',
                         labels: {
-                            padding: isMobile ? 10 : 20,
+                            color: '#ffffff',
+                            padding: isMobile ? 10 : 15,
                             font: {
-                                size: isMobile ? 10 : 12
-                            }
+                                family: "'Poppins', sans-serif",
+                                size: isMobile ? 12 : 14,
+                                weight: '500'
+                            },
+                            boxWidth: 40,
+                            usePointStyle: true,
+                            pointStyle: 'line'
                         }
+                    },
+                    title: {
+                        display: false
                     }
                 },
                 scales: {
@@ -275,7 +329,9 @@ class DashboardMetrics {
                             color: 'rgba(255, 255, 255, 0.1)'
                         },
                         ticks: {
+                            color: '#999999',
                             font: {
+                                family: "'Poppins', sans-serif",
                                 size: isMobile ? 10 : 12
                             }
                         }
@@ -285,7 +341,9 @@ class DashboardMetrics {
                             color: 'rgba(255, 255, 255, 0.1)'
                         },
                         ticks: {
+                            color: '#999999',
                             font: {
+                                family: "'Poppins', sans-serif",
                                 size: isMobile ? 10 : 12
                             }
                         }
