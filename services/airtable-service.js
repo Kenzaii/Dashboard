@@ -10,9 +10,12 @@ class AirtableService {
         try {
             // Sort by Start time in descending order
             const url = `${this.baseURL}?sort[0][field]=Start time&sort[0][direction]=desc`;
+            
             const response = await fetch(url, {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json'
                 }
             });
             
@@ -25,6 +28,25 @@ class AirtableService {
         } catch (error) {
             console.error('Error fetching data:', error);
             return [];
+        }
+    }
+
+    // Add error handling for the interval
+    startPolling(interval = 30000) {
+        this.pollingInterval = setInterval(async () => {
+            try {
+                await this.fetchCalls();
+            } catch (error) {
+                console.error('Polling error:', error);
+                // Optional: stop polling on persistent errors
+                // clearInterval(this.pollingInterval);
+            }
+        }, interval);
+    }
+
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
         }
     }
 } 
